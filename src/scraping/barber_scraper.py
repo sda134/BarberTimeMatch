@@ -1,165 +1,143 @@
 import requests
 from lxml import html
-import csv
+import pandas as pd
 from datetime import datetime
+import yaml
 import time
 import os
 import sys
-import json
+import re
+from pathlib import Path
 
-# プロジェクトルートをPythonパスに追加
-sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
-
-from src.scraping.utils import (
-    load_config, 
-    load_stores_config, 
-    get_random_wait_time, 
-    ensure_data_directory,
-    generate_mock_wait_count
-)
-
-class BarberScraper:
-    def __init__(self):
-        self.config = load_config()
-        self.stores_config = load_stores_config()
-        self.session = requests.Session()
-        self.session.headers.update({
-            'User-Agent': self.config['scraping']['user_agent']
-        })
+def load_config():
+    """設定ファイルを読み込み"""
+    config_path = Path(__file__).parent.parent.parent / 'config'
     
-    def scrape_store_data(self, store_config):
-        """単一店舗のデータを取得"""
-        try:
-            # デバッグモードまたはサンプル店舗の場合はモックデータを使用
-            if self.config.get('debug', {}).get('mock_data', False) or store_config.get('type') == 'sample':
-                return self._generate_mock_data(store_config)
-            
-            # 実際のスクレイピング処理
-            response = self.session.get(
-                store_config['url'], 
-                timeout=self.config['scraping']['timeout']
-            )
-            response.raise_for_status()
-            
-            # レスポンスを保存（デバッグ用）
-            if self.config.get('debug', {}).get('save_responses', False):
-                self._save_response(store_config['id'], response.text)
-            
-            tree = html.fromstring(response.content)
-            wait_count_elements = tree.xpath(store_config['xpath_wait_count'])
-            
-            if wait_count_elements:
-                wait_count = int(wait_count_elements[0].strip())
-            else:
-                wait_count = None
-                
-            return self._create_data_record(store_config, wait_count)
-            
-        except Exception as e:
-            print(f"Error scraping {store_config['name']}: {e}")
-            # エラー時はモックデータを返す
-            return self._generate_mock_data(store_config, error=True)
+    with open(config_path / 'stores.yaml', 'r', encoding='utf-8') as f:
+        stores_config = yaml.safe_load(f)
     
-    def _generate_mock_data(self, store_config, error=False):
-        """テスト用のモックデータを生成"""
-        if error:
-            wait_count = None
-        else:
-            wait_count = generate_mock_wait_count()
+    with open(config_path / 'scraping_config.yaml', 'r', encoding='utf-8') as f:
+        scraping_config = yaml.safe_load(f)
+    
+    return stores_config, scraping_config
+
+def scrape_store_data(store_config, scraping_config):
+    """単一店舗のデータを取得"""
+    headers = {'User-Agent': scraping_config['scraping']['user_agent']}
+    timeout = scraping_config['scraping']['timeout']
+    
+    timestamp = datetime.now()
+    
+    try:
+        response = requests.get(store_config['url'], headers=headers, timeout=timeout)
+        response.raise_for_status()
         
-        return self._create_data_record(store_config, wait_count)
-    
-    def _create_data_record(self, store_config, wait_count):
-        """データレコードを作成"""
-        now = datetime.now()
+        tree = html.fromstring(response.content)
+        wait_count_elements = tree.xpath(store_config['xpath_wait_count'])
+        
+        if wait_count_elements:
+            # 数値部分を抽出
+            wait_text = str(wait_count_elements[0]).strip()
+            # 数字のみを抽出（例: "3組" → "3"）
+            numbers = re.findall(r'\d+', wait_text)
+            wait_count = int(numbers[0]) if numbers else None
+        else:
+            wait_count = None
+            
         return {
-            'timestamp': now.strftime('%Y-%m-%d %H:%M:%S'),
+            'timestamp': timestamp.strftime('%Y-%m-%d %H:%M:%S'),
+            'date': timestamp.strftime('%Y-%m-%d'),
+            'time': timestamp.strftime('%H:%M'),
             'store_id': store_config['id'],
             'store_name': store_config['name'],
             'wait_count': wait_count,
             'area': store_config['area'],
-            'day_of_week': now.strftime('%A'),
-            'hour': now.hour,
-            'minute': now.minute,
-            'is_weekend': now.weekday() >= 5,
-            'date': now.strftime('%Y-%m-%d')
+            'day_of_week': timestamp.strftime('%A'),
+            'hour': timestamp.hour,
+            'weekday_num': timestamp.weekday(),  # 0=月曜
+            'is_weekend': timestamp.weekday() >= 5,
+            'scraping_status': 'success'
         }
+    except requests.exceptions.RequestException as e:
+        print(f"Network error scraping {store_config['name']}: {e}")
+        return create_error_record(store_config, timestamp, f"network_error: {str(e)}")
+    except Exception as e:
+        print(f"Error scraping {store_config['name']}: {e}")
+        return create_error_record(store_config, timestamp, f"parse_error: {str(e)}")
+
+def create_error_record(store_config, timestamp, error_msg):
+    """エラー時のレコードを作成"""
+    return {
+        'timestamp': timestamp.strftime('%Y-%m-%d %H:%M:%S'),
+        'date': timestamp.strftime('%Y-%m-%d'),
+        'time': timestamp.strftime('%H:%M'),
+        'store_id': store_config['id'],
+        'store_name': store_config['name'],
+        'wait_count': None,
+        'area': store_config['area'],
+        'day_of_week': timestamp.strftime('%A'),
+        'hour': timestamp.hour,
+        'weekday_num': timestamp.weekday(),
+        'is_weekend': timestamp.weekday() >= 5,
+        'scraping_status': error_msg
+    }
+
+def save_data(data_list):
+    """データをCSVファイルに保存"""
+    if not data_list:
+        print("No data to save")
+        return
     
-    def _save_response(self, store_id, response_text):
-        """デバッグ用にレスポンスを保存"""
-        debug_dir = os.path.join('data', 'debug')
-        os.makedirs(debug_dir, exist_ok=True)
-        
-        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-        filename = f"{store_id}_{timestamp}_response.html"
-        filepath = os.path.join(debug_dir, filename)
-        
-        with open(filepath, 'w', encoding='utf-8') as f:
-            f.write(response_text)
+    df = pd.DataFrame(data_list)
     
-    def scrape_all_stores(self):
-        """全店舗のデータを取得"""
+    # データディレクトリの作成
+    data_dir = Path(__file__).parent.parent.parent / 'data' / 'raw'
+    data_dir.mkdir(parents=True, exist_ok=True)
+    
+    csv_path = data_dir / 'barber_data.csv'
+    
+    # CSVに追記
+    if csv_path.exists():
+        df.to_csv(csv_path, mode='a', header=False, index=False, encoding='utf-8')
+    else:
+        df.to_csv(csv_path, index=False, encoding='utf-8')
+    
+    print(f"Saved {len(data_list)} records to {csv_path}")
+
+def main():
+    """メイン処理"""
+    try:
+        stores_config, scraping_config = load_config()
         all_data = []
         
-        for store in self.stores_config['stores']:
+        # 床屋タイプの店舗のみ対象
+        barber_stores = [store for store in stores_config['stores'] 
+                        if store.get('type') == 'barber']
+        
+        if not barber_stores:
+            print("No barber stores found in configuration")
+            return
+        
+        for store in barber_stores:
             print(f"Scraping {store['name']}...")
-            data = self.scrape_store_data(store)
+            data = scrape_store_data(store, scraping_config)
             if data:
                 all_data.append(data)
                 print(f"  - Wait count: {data['wait_count']}")
             
             # レート制限
-            get_random_wait_time(
-                self.config['scraping']['delay_between_requests'] - 0.5,
-                self.config['scraping']['delay_between_requests'] + 0.5
-            )
+            delay = scraping_config['scraping']['delay_between_requests']
+            if len(barber_stores) > 1:  # 複数店舗がある場合のみ待機
+                time.sleep(delay)
         
-        return all_data
-    
-    def save_data(self, data):
-        """データをCSVに保存"""
-        if not data:
-            print("No data to save")
-            return
+        # データ保存
+        save_data(all_data)
         
-        csv_path = os.path.join('data', 'raw', 'barber_data.csv')
-        ensure_data_directory(csv_path)
+        print(f"Successfully collected data for {len(all_data)} stores")
         
-        # ヘッダー行の定義
-        fieldnames = ['timestamp', 'store_id', 'store_name', 'wait_count', 'area', 
-                     'day_of_week', 'hour', 'minute', 'is_weekend', 'date']
-        
-        # ファイルが存在するかチェック
-        file_exists = os.path.exists(csv_path)
-        
-        # CSVに書き込み
-        with open(csv_path, 'a', newline='', encoding='utf-8') as csvfile:
-            writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
-            
-            # ファイルが新規作成の場合はヘッダーを書き込み
-            if not file_exists:
-                writer.writeheader()
-            
-            # データを書き込み
-            writer.writerows(data)
-        
-        print(f"Data saved to {csv_path}")
-        print(f"Total records collected: {len(data)}")
-
-def main():
-    """メイン処理"""
-    scraper = BarberScraper()
-    
-    print("Starting barber data collection...")
-    print(f"Timestamp: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-    
-    # データ収集
-    all_data = scraper.scrape_all_stores()
-    
-    # データ保存
-    scraper.save_data(all_data)
-    
-    print("Barber data collection completed!")
+    except Exception as e:
+        print(f"Error in main process: {e}")
+        sys.exit(1)
 
 if __name__ == "__main__":
     main()

@@ -1,0 +1,62 @@
+name: データ分析・可視化
+
+on:
+  schedule:
+    # 毎日午前0時に分析実行 (JST) → UTC 15時
+    - cron: '0 15 * * *'  # JST 0:00
+  workflow_dispatch: # 手動実行も可能
+
+jobs:
+  analyze-data:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+      
+    - name: Setup Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+        
+    - name: Install dependencies
+      run: pip install -r requirements.txt
+      
+    - name: Check if data exists
+      run: |
+        if [ -f "data/raw/barber_data.csv" ] && [ -f "data/raw/weather_data.csv" ]; then
+          echo "Data files found - proceeding with analysis"
+        else
+          echo "Data files not found - skipping analysis"
+          exit 0
+        fi
+      
+    # 分析スクリプトは将来実装予定
+    # - name: Data preprocessing
+    #   run: python src/analysis/data_preprocessing.py
+    #   
+    # - name: Generate visualizations
+    #   run: python src/analysis/visualization.py
+    #   
+    # - name: Time series analysis
+    #   run: python src/analysis/time_series_analysis.py
+    #   
+    # - name: Update predictions
+    #   run: python src/models/wait_time_predictor.py
+    #   
+    # - name: Commit results
+    #   run: |
+    #     git config --local user.email "action@github.com"
+    #     git config --local user.name "GitHub Action"
+    #     git add data/processed/ data/results/ visualizations/
+    #     if git diff --staged --quiet; then
+    #       echo "No analysis results to commit"
+    #     else
+    #       git commit -m "📊 Update analysis: $(date '+%Y-%m-%d JST')"
+    #       git push
+    #     fi
+    
+    - name: Analysis placeholder
+      run: |
+        echo "Analysis workflow is ready but scripts are not yet implemented"
+        echo "Data collection should run first to accumulate data for analysis"

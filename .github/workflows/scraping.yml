@@ -1,0 +1,42 @@
+name: データ収集
+
+on:
+  schedule:
+    # 毎日9時、11時、13時、15時、17時に実行 (JST)
+    # GitHub ActionsはUTCなので、JST-9時間で設定
+    - cron: '0 0,2,4,6,8 * * *'  # JST 9,11,13,15,17時
+  workflow_dispatch:  # 手動実行も可能
+
+jobs:
+  scrape-data:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+      
+    - name: Setup Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+        
+    - name: Install dependencies
+      run: pip install -r requirements.txt
+      
+    - name: Run barber scraping
+      run: python src/scraping/barber_scraper.py
+      
+    - name: Run weather scraping  
+      run: python src/scraping/weather_scraper.py
+      
+    - name: Commit data
+      run: |
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
+        git add data/raw/
+        if git diff --staged --quiet; then
+          echo "No changes to commit"
+        else
+          git commit -m "🤖 Add data: $(date '+%Y-%m-%d %H:%M JST')"
+          git push
+        fi

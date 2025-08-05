@@ -1,13 +1,17 @@
 stores:
-  - id: "sample_store"
-    name: "サンプル店舗"
-    url: "https://httpbin.org/json"  # テスト用エンドポイント
-    xpath_wait_count: "//slideshow/slide[1]/title/text()"
-    area: "東京都"
-    type: "sample"  # 実際の店舗の場合は"barber"
-  - id: "demo_store"
+  - id: "nagoya_demo_store"
     name: "アルペンモール守山志段味店"  
     url: "https://option.junbanmachi.jp/embed/?id=2516&apiKey=Pr936rqlEoMgw0PHh2yN2t35GuzxeYyBAk24TAYlvekmYCseHCxQ3cD8beaB"
-    xpath_wait_count: '//div[@id="app"]//span[1]'
-    area: "愛知"
+    xpath_wait_count: '//div[@id="app"]//span[contains(@class, "number")]/text()'
+    area: "愛知県"
+    weather_area_code: "230000"  # 愛知県の気象庁エリアコード
     type: "barber"
+    notes: "名古屋の実際の床屋店舗例"
+
+# 主要エリアコード参考:
+# 130000: 東京都
+# 140000: 神奈川県  
+# 230000: 愛知県
+# 270000: 大阪府
+# 280000: 兵庫県
+# 400000: 福岡県
