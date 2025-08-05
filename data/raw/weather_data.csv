@@ -1,0 +1,5 @@
+timestamp,date,time,hour,area_code,area_name,weather_forecast,temp_min_forecast,temp_max_forecast,current_temp,humidity,precipitation_1h,wind_speed,data_status
+2025-08-06 07:26:43,2025-08-06,07:26,7,230000,西部,晴れ　時々　くもり　所により　昼前　から　夜のはじめ頃　雨　で　雷を伴う,,,,,,,success
+2025-08-06 07:28:54,2025-08-06,07:28,7,230000,西部,晴れ時々曇り,,,,,,,success
+2025-08-06 07:29:15,2025-08-06,07:29,7,230000,西部,晴れ時々曇り,,,,,,,success
+2025-08-06 07:33:45,2025-08-06,07:33,7,230000,西部,晴れ時々曇り,,,,,,,success

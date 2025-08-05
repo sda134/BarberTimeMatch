@@ -18,6 +18,36 @@ def load_config():
     
     return stores_config, scraping_config
 
+def simplify_weather(weather_text):
+    """複雑な天気予報文を簡単な表現に変換"""
+    if not weather_text:
+        return "不明"
+    
+    # 主要な天気キーワードで判定
+    weather_text = weather_text.replace('　', ' ')  # 全角スペースを半角に
+    
+    if '晴れ' in weather_text:
+        if 'くもり' in weather_text or '曇り' in weather_text:
+            return "晴れ時々曇り"
+        elif '雨' in weather_text:
+            return "晴れ時々雨"
+        else:
+            return "晴れ"
+    elif 'くもり' in weather_text or '曇り' in weather_text:
+        if '雨' in weather_text:
+            return "曇り時々雨"
+        else:
+            return "曇り"
+    elif '雨' in weather_text:
+        if '雷' in weather_text:
+            return "雨時々雷雨"
+        else:
+            return "雨"
+    elif '雪' in weather_text:
+        return "雪"
+    else:
+        return weather_text[:10] + "..." if len(weather_text) > 10 else weather_text
+
 def get_unique_area_codes(stores_config):
     """設定されている店舗の重複しないエリアコードを取得"""
     area_codes = set()
@@ -36,8 +66,11 @@ def get_forecast_data(area_code, timeout=15):
         data = response.json()
         
         # 今日の天気情報を抽出
-        today_weather = data[0]['timeSeries'][0]['areas'][0]['weathers'][0]
+        today_weather_raw = data[0]['timeSeries'][0]['areas'][0]['weathers'][0]
         area_name = data[0]['timeSeries'][0]['areas'][0]['area']['name']
+        
+        # 天気を簡略化
+        today_weather = simplify_weather(today_weather_raw)
         
         # 気温データの抽出（存在する場合）
         today_temp_min = None
@@ -63,70 +96,80 @@ def get_forecast_data(area_code, timeout=15):
 
 def get_observation_data(area_code, timeout=15):
     """指定エリアの観測データを取得（現在の気温・湿度など）"""
-    # 観測データAPIの例（実際のエンドポイントは要調査）
-    # 名古屋の観測所ID（例：47636）を使用
-    
-    # 愛知県の観測地点マッピング（簡略版）
+    # 名古屋周辺の観測所IDを複数試行
     observation_stations = {
-        '230000': '47636'  # 愛知県 → 名古屋観測所
+        '230000': ['47636', '47635', '47651']  # 名古屋、岡崎、半田など
     }
     
-    station_id = observation_stations.get(area_code)
-    if not station_id:
-        print(f"No observation station found for area code {area_code}")
+    station_ids = observation_stations.get(area_code, [])
+    if not station_ids:
+        print(f"No observation stations found for area code {area_code}")
         return None
     
-    # 現在の日時を取得
+    # 現在時刻と1時間前の時刻を試行（データ更新のタイミング考慮）
+    import datetime as dt
     now = datetime.now()
-    date_str = now.strftime('%Y%m%d')
-    hour_str = now.strftime('%H')
+    time_candidates = [
+        now,
+        now.replace(minute=0, second=0, microsecond=0) - dt.timedelta(hours=1)
+    ]
     
-    # 観測データAPIのURL（1時間毎の観測データ）
-    url = f"https://www.jma.go.jp/bosai/amedas/data/map/{date_str}{hour_str}0000.json"
-    
-    try:
-        response = requests.get(url, timeout=timeout)
-        response.raise_for_status()
-        data = response.json()
+    for time_to_try in time_candidates:
+        date_str = time_to_try.strftime('%Y%m%d')
+        hour_str = time_to_try.strftime('%H')
         
-        # 指定観測所のデータを取得
-        if station_id in data:
-            station_data = data[station_id]
+        # 観測データAPIのURL
+        url = f"https://www.jma.go.jp/bosai/amedas/data/map/{date_str}{hour_str}0000.json"
+        
+        try:
+            response = requests.get(url, timeout=timeout)
+            response.raise_for_status()
+            data = response.json()
             
-            # 現在気温（temperature）
-            current_temp = None
-            if 'temp' in station_data and station_data['temp'] is not None:
-                current_temp = station_data['temp'][0]  # [値, 品質情報]の形式
-            
-            # 湿度
-            humidity = None
-            if 'humidity' in station_data and station_data['humidity'] is not None:
-                humidity = station_data['humidity'][0]
-            
-            # 降水量
-            precipitation = None
-            if 'precipitation1h' in station_data and station_data['precipitation1h'] is not None:
-                precipitation = station_data['precipitation1h'][0]
-            
-            # 風速
-            wind_speed = None
-            if 'wind' in station_data and station_data['wind'] is not None:
-                wind_speed = station_data['wind'][0]
-            
-            return {
-                'station_id': station_id,
-                'current_temp': current_temp,
-                'humidity': humidity,
-                'precipitation_1h': precipitation,
-                'wind_speed': wind_speed,
-            }
-        else:
-            print(f"No data found for station {station_id}")
-            return None
-            
-    except Exception as e:
-        print(f"Error getting observation data for area {area_code}: {e}")
-        return None
+            # 複数の観測所を試行
+            for station_id in station_ids:
+                if station_id in data:
+                    station_data = data[station_id]
+                    
+                    # データが存在するかチェック
+                    if station_data:
+                        # 現在気温
+                        current_temp = None
+                        if 'temp' in station_data and station_data['temp'] is not None:
+                            current_temp = station_data['temp'][0]  # [値, 品質情報]の形式
+                        
+                        # 湿度
+                        humidity = None
+                        if 'humidity' in station_data and station_data['humidity'] is not None:
+                            humidity = station_data['humidity'][0]
+                        
+                        # 降水量
+                        precipitation = None
+                        if 'precipitation1h' in station_data and station_data['precipitation1h'] is not None:
+                            precipitation = station_data['precipitation1h'][0]
+                        
+                        # 風速
+                        wind_speed = None
+                        if 'wind' in station_data and station_data['wind'] is not None:
+                            wind_speed = station_data['wind'][0]
+                        
+                        # 何かしらのデータが取得できた場合は返す
+                        if any([current_temp, humidity, precipitation, wind_speed]):
+                            return {
+                                'station_id': station_id,
+                                'observation_time': time_to_try.strftime('%Y-%m-%d %H:%M'),
+                                'current_temp': current_temp,
+                                'humidity': humidity,
+                                'precipitation_1h': precipitation,
+                                'wind_speed': wind_speed,
+                            }
+                        
+        except Exception as e:
+            print(f"Error getting observation data for {time_to_try}: {e}")
+            continue
+    
+    print(f"No observation data found for area {area_code}")
+    return None
 
 def get_weather_data(area_code, scraping_config):
     """指定エリアの予報・観測データを統合して取得"""
