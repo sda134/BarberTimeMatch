@@ -94,11 +94,26 @@ def get_forecast_data(area_code, timeout=15):
         print(f"Error getting forecast data for area {area_code}: {e}")
         return None
 
+def get_latest_timestamp():
+    """最新のアメダスデータタイムスタンプを取得"""
+    try:
+        response = requests.get("https://www.jma.go.jp/bosai/amedas/data/latest_time.txt", timeout=10)
+        response.raise_for_status()
+        timestamp_str = response.text.strip()
+        # ISO形式のタイムスタンプを解析
+        dt = datetime.fromisoformat(timestamp_str.replace('Z', '+00:00'))
+        return dt.strftime('%Y%m%d%H%M00')
+    except Exception as e:
+        print(f"最新タイムスタンプ取得エラー: {e}")
+        # フォールバック: 現在時刻から推定（10分単位に調整）
+        now = datetime.now()
+        return now.strftime('%Y%m%d%H%M00')
+
 def get_observation_data(area_code, timeout=15):
     """指定エリアの観測データを取得（現在の気温・湿度など）"""
-    # 名古屋周辺の観測所IDを複数試行
+    # 正確な観測所IDマッピング（調査結果に基づく）
     observation_stations = {
-        '230000': ['47636', '47635', '47651']  # 名古屋、岡崎、半田など
+        '230000': ['51106', '51116', '51216']  # 名古屋、豊田、大府
     }
     
     station_ids = observation_stations.get(area_code, [])
@@ -106,20 +121,25 @@ def get_observation_data(area_code, timeout=15):
         print(f"No observation stations found for area code {area_code}")
         return None
     
-    # 現在時刻と1時間前の時刻を試行（データ更新のタイミング考慮）
+    # 最新タイムスタンプと複数の候補時刻を試行
+    latest_timestamp = get_latest_timestamp()
+    
     import datetime as dt
     now = datetime.now()
-    time_candidates = [
-        now,
-        now.replace(minute=0, second=0, microsecond=0) - dt.timedelta(hours=1)
-    ]
     
-    for time_to_try in time_candidates:
-        date_str = time_to_try.strftime('%Y%m%d')
-        hour_str = time_to_try.strftime('%H')
-        
-        # 観測データAPIのURL
-        url = f"https://www.jma.go.jp/bosai/amedas/data/map/{date_str}{hour_str}0000.json"
+    # 複数の時刻候補を生成（10分間隔で過去1時間）
+    time_candidates = []
+    for i in range(7):  # 現在から60分前まで10分刻み
+        candidate_time = now - dt.timedelta(minutes=i*10)
+        timestamp = candidate_time.strftime('%Y%m%d%H%M00')
+        time_candidates.append(timestamp)
+    
+    # 最新タイムスタンプも追加
+    if latest_timestamp not in time_candidates:
+        time_candidates.insert(0, latest_timestamp)
+    
+    for timestamp in time_candidates:
+        url = f"https://www.jma.go.jp/bosai/amedas/data/map/{timestamp}.json"
         
         try:
             response = requests.get(url, timeout=timeout)
@@ -131,12 +151,11 @@ def get_observation_data(area_code, timeout=15):
                 if station_id in data:
                     station_data = data[station_id]
                     
-                    # データが存在するかチェック
                     if station_data:
-                        # 現在気温
+                        # 気温
                         current_temp = None
                         if 'temp' in station_data and station_data['temp'] is not None:
-                            current_temp = station_data['temp'][0]  # [値, 品質情報]の形式
+                            current_temp = station_data['temp'][0]
                         
                         # 湿度
                         humidity = None
@@ -153,22 +172,29 @@ def get_observation_data(area_code, timeout=15):
                         if 'wind' in station_data and station_data['wind'] is not None:
                             wind_speed = station_data['wind'][0]
                         
+                        # 気圧
+                        pressure = None
+                        if 'pressure' in station_data and station_data['pressure'] is not None:
+                            pressure = station_data['pressure'][0]
+                        
                         # 何かしらのデータが取得できた場合は返す
-                        if any([current_temp, humidity, precipitation, wind_speed]):
+                        if any([current_temp, humidity, precipitation, wind_speed, pressure]):
+                            print(f"観測データ取得成功: 観測所{station_id}, 時刻{timestamp}")
                             return {
                                 'station_id': station_id,
-                                'observation_time': time_to_try.strftime('%Y-%m-%d %H:%M'),
+                                'observation_timestamp': timestamp,
                                 'current_temp': current_temp,
                                 'humidity': humidity,
                                 'precipitation_1h': precipitation,
                                 'wind_speed': wind_speed,
+                                'pressure': pressure,
                             }
                         
         except Exception as e:
-            print(f"Error getting observation data for {time_to_try}: {e}")
+            print(f"観測データ取得エラー ({timestamp}): {e}")
             continue
     
-    print(f"No observation data found for area {area_code}")
+    print(f"観測データが見つかりませんでした (area: {area_code})")
     return None
 
 def get_weather_data(area_code, scraping_config):
@@ -197,6 +223,8 @@ def get_weather_data(area_code, scraping_config):
         'humidity': observation_data['humidity'] if observation_data else None,
         'precipitation_1h': observation_data['precipitation_1h'] if observation_data else None,
         'wind_speed': observation_data['wind_speed'] if observation_data else None,
+        'pressure': observation_data['pressure'] if observation_data else None,
+        'observation_station': observation_data['station_id'] if observation_data else None,
         'data_status': 'success' if (forecast_data or observation_data) else 'error'
     }
     
