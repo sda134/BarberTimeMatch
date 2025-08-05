@@ -1,0 +1,17 @@
+scraping:
+  user_agent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
+  timeout: 10
+  retry_count: 3
+  delay_between_requests: 2
+
+weather:
+  api_endpoint: "https://www.jma.go.jp/bosai/forecast/data/forecast/"
+  area_code: "130000"  # 東京都
+  
+schedule:
+  weekdays: [5, 6]  # 土日 (0=月曜)
+  hours: [9, 10, 11, 12, 13, 14, 15, 16, 17, 18]
+
+debug:
+  mock_data: true  # ローカルテスト用
+  save_responses: true

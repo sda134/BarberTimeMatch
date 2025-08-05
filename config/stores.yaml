@@ -1,0 +1,13 @@
+stores:
+  - id: "sample_store"
+    name: "サンプル店舗"
+    url: "https://httpbin.org/json"  # テスト用エンドポイント
+    xpath_wait_count: "//slideshow/slide[1]/title/text()"
+    area: "東京都"
+    type: "sample"  # 実際の店舗の場合は"barber"
+  - id: "demo_store"
+    name: "アルペンモール守山志段味店"  
+    url: "https://option.junbanmachi.jp/embed/?id=2516&apiKey=Pr936rqlEoMgw0PHh2yN2t35GuzxeYyBAk24TAYlvekmYCseHCxQ3cD8beaB"
+    xpath_wait_count: '//div[@id="app"]//span[1]'
+    area: "愛知"
+    type: "barber"
