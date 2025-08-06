@@ -1,6 +1,9 @@
-import requests
-from lxml import html
-import pandas as pd
+from selenium import webdriver
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.chrome.options import Options
+from selenium.common.exceptions import TimeoutException, NoSuchElementException
 from datetime import datetime
 import yaml
 import time
@@ -21,27 +24,56 @@ def load_config():
     
     return stores_config, scraping_config
 
-def scrape_store_data(store_config, scraping_config):
-    """単一店舗のデータを取得"""
-    headers = {'User-Agent': scraping_config['scraping']['user_agent']}
-    timeout = scraping_config['scraping']['timeout']
+def create_driver(scraping_config):
+    """Selenium WebDriverを作成"""
+    chrome_options = Options()
+    chrome_options.add_argument("--headless")  # ヘッドレスモード
+    chrome_options.add_argument("--no-sandbox")
+    chrome_options.add_argument("--disable-dev-shm-usage")
+    chrome_options.add_argument("--disable-gpu")
+    chrome_options.add_argument("--window-size=1920,1080")
+    chrome_options.add_argument(f"--user-agent={scraping_config['scraping']['user_agent']}")
     
+    driver = webdriver.Chrome(options=chrome_options)
+    driver.set_page_load_timeout(scraping_config['scraping']['timeout'])
+    return driver
+
+def scrape_store_data(store_config, scraping_config):
+    """単一店舗のデータを取得（Selenium使用）"""
     timestamp = datetime.now()
+    driver = None
     
     try:
-        response = requests.get(store_config['url'], headers=headers, timeout=timeout)
-        response.raise_for_status()
+        driver = create_driver(scraping_config)
+        driver.get(store_config['url'])
         
-        tree = html.fromstring(response.content)
-        wait_count_elements = tree.xpath(store_config['xpath_wait_count'])
+        # JavaScriptの実行を待つ（最大10秒）
+        wait = WebDriverWait(driver, 10)
         
-        if wait_count_elements:
-            # 数値部分を抽出
-            wait_text = str(wait_count_elements[0]).strip()
-            # 数字のみを抽出（例: "3組" → "3"）
-            numbers = re.findall(r'\d+', wait_text)
-            wait_count = int(numbers[0]) if numbers else None
-        else:
+        try:
+            # 待ち時間数字の要素を取得（クラス名で直接指定）
+            element = wait.until(EC.presence_of_element_located((By.CLASS_NAME, "waiting-view__number")))
+            wait_text = element.text.strip()
+            
+            if wait_text:
+                if wait_text == '-':
+                    # 営業時間外または閉店時は0とする
+                    wait_count = 0
+                    print(f"Found wait count text: '{wait_text}' (closed/after-hours) -> {wait_count}")
+                else:
+                    # 数字のみを抽出（例: "3組" → "3"）
+                    numbers = re.findall(r'\d+', wait_text)
+                    wait_count = int(numbers[0]) if numbers else None
+                    print(f"Found wait count text: '{wait_text}' -> {wait_count}")
+            else:
+                wait_count = None
+                print("Wait text is empty")
+                
+        except TimeoutException:
+            print("Timeout waiting for waiting-view__number element")
+            wait_count = None
+        except NoSuchElementException:
+            print("waiting-view__number element not found")
             wait_count = None
             
         return {
@@ -58,12 +90,13 @@ def scrape_store_data(store_config, scraping_config):
             'is_weekend': timestamp.weekday() >= 5,
             'scraping_status': 'success'
         }
-    except requests.exceptions.RequestException as e:
-        print(f"Network error scraping {store_config['name']}: {e}")
-        return create_error_record(store_config, timestamp, f"network_error: {str(e)}")
+        
     except Exception as e:
         print(f"Error scraping {store_config['name']}: {e}")
-        return create_error_record(store_config, timestamp, f"parse_error: {str(e)}")
+        return create_error_record(store_config, timestamp, f"selenium_error: {str(e)}")
+    finally:
+        if driver:
+            driver.quit()
 
 def create_error_record(store_config, timestamp, error_msg):
     """エラー時のレコードを作成"""
@@ -88,19 +121,33 @@ def save_data(data_list):
         print("No data to save")
         return
     
-    df = pd.DataFrame(data_list)
-    
     # データディレクトリの作成
     data_dir = Path(__file__).parent.parent.parent / 'data' / 'raw'
     data_dir.mkdir(parents=True, exist_ok=True)
     
     csv_path = data_dir / 'barber_data.csv'
     
-    # CSVに追記
-    if csv_path.exists():
-        df.to_csv(csv_path, mode='a', header=False, index=False, encoding='utf-8')
-    else:
-        df.to_csv(csv_path, index=False, encoding='utf-8')
+    # CSVヘッダー
+    header = [
+        'timestamp', 'date', 'time', 'store_id', 'store_name', 'wait_count',
+        'area', 'day_of_week', 'hour', 'weekday_num', 'is_weekend', 'scraping_status'
+    ]
+    
+    # ファイルが存在しない場合はヘッダーを書き込み
+    file_exists = csv_path.exists()
+    
+    with open(csv_path, 'a', encoding='utf-8') as f:
+        if not file_exists:
+            f.write(','.join(header) + '\n')
+        
+        for data in data_list:
+            row = []
+            for col in header:
+                value = data.get(col, '')
+                if value is None:
+                    value = ''
+                row.append(str(value))
+            f.write(','.join(row) + '\n')
     
     print(f"Saved {len(data_list)} records to {csv_path}")
 

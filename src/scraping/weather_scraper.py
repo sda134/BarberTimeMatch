@@ -1,5 +1,4 @@
 import requests
-import pandas as pd
 from datetime import datetime
 import yaml
 import time
@@ -78,10 +77,17 @@ def get_forecast_data(area_code, timeout=15):
         
         if len(data[0]['timeSeries']) > 2 and 'areas' in data[0]['timeSeries'][2]:
             temp_areas = data[0]['timeSeries'][2]['areas'][0]
-            if 'tempsMin' in temp_areas and temp_areas['tempsMin']:
-                today_temp_min = temp_areas['tempsMin'][0] if temp_areas['tempsMin'][0] != '' else None
-            if 'tempsMax' in temp_areas and temp_areas['tempsMax']:
-                today_temp_max = temp_areas['tempsMax'][0] if temp_areas['tempsMax'][0] != '' else None
+            if 'temps' in temp_areas and temp_areas['temps']:
+                temps = temp_areas['temps'][0] if temp_areas['temps'] else None
+                if temps and temps != '':
+                    # 気温データは "最低気温/最高気温" 形式の場合がある
+                    if '/' in str(temps):
+                        temp_parts = str(temps).split('/')
+                        today_temp_min = temp_parts[0] if temp_parts[0] != '' else None
+                        today_temp_max = temp_parts[1] if len(temp_parts) > 1 and temp_parts[1] != '' else None
+                    else:
+                        # 単一の気温値の場合は最高気温として扱う
+                        today_temp_max = temps
         
         return {
             'area_code': area_code,
@@ -236,19 +242,35 @@ def save_data(data_list):
         print("No weather data to save")
         return
     
-    df = pd.DataFrame(data_list)
-    
     # データディレクトリの作成
     data_dir = Path(__file__).parent.parent.parent / 'data' / 'raw'
     data_dir.mkdir(parents=True, exist_ok=True)
     
     csv_path = data_dir / 'weather_data.csv'
     
-    # CSVに追記
-    if csv_path.exists():
-        df.to_csv(csv_path, mode='a', header=False, index=False, encoding='utf-8')
-    else:
-        df.to_csv(csv_path, index=False, encoding='utf-8')
+    # CSVヘッダー
+    header = [
+        'timestamp', 'date', 'time', 'hour', 'area_code', 'area_name',
+        'weather_forecast', 'temp_min_forecast', 'temp_max_forecast',
+        'current_temp', 'humidity', 'precipitation_1h', 'wind_speed',
+        'pressure', 'observation_station', 'data_status'
+    ]
+    
+    # ファイルが存在しない場合はヘッダーを書き込み
+    file_exists = csv_path.exists()
+    
+    with open(csv_path, 'a', encoding='utf-8') as f:
+        if not file_exists:
+            f.write(','.join(header) + '\n')
+        
+        for data in data_list:
+            row = []
+            for col in header:
+                value = data.get(col, '')
+                if value is None:
+                    value = ''
+                row.append(str(value))
+            f.write(','.join(row) + '\n')
     
     print(f"Saved {len(data_list)} weather records to {csv_path}")
 
