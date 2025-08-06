@@ -1,6 +1,4 @@
 timestamp,store_id,store_name,wait_count,area,day_of_week,hour,minute,is_weekend,date
-2025-08-06 05:17:17,sample_store,サンプル店舗,2,東京都,Wednesday,5,17,False,2025-08-06
-2025-08-06 05:17:18,demo_store,アルペンモール守山志段味店,0,愛知,Wednesday,5,17,False,2025-08-06
 2025-08-06 03:30:04,2025-08-06,03:30,nagoya_demo_store,アルペンモール守山志段味店,,愛知県,Wednesday,3,2,False,success
 2025-08-06 04:17:11,2025-08-06,04:17,nagoya_demo_store,アルペンモール守山志段味店,,愛知県,Wednesday,4,2,False,success
 2025-08-06 06:02:49,2025-08-06,06:02,nagoya_demo_store,アルペンモール守山志段味店,,愛知県,Wednesday,6,2,False,success

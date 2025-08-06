@@ -1,4 +1,4 @@
-#!/home/sda/workspace/barbar_time_match/.venv/bin/python
+#!/home/sda/workspace/BarberTimeMatch/.venv/bin/python
 import sys
 from charset_normalizer import cli
 if __name__ == '__main__':
