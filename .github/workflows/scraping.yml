@@ -38,5 +38,6 @@ jobs:
           echo "No changes to commit"
         else
           git commit -m "🤖 Add data: $(date '+%Y-%m-%d %H:%M JST')"
+          git pull --rebase
           git push
         fi
