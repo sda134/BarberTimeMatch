@@ -32,16 +32,10 @@ jobs:
     - name: Run weather scraping  
       run: python src/scraping/weather_scraper.py
       
-    - name: Commit data
-      run: |
-        git config --local user.email "action@github.com"
-        git config --local user.name "GitHub Action"
-        git add data/raw/
-        if git diff --staged --quiet; then
-          echo "No changes to commit"
-        else
-          git commit -m "🤖 Add data: $(date '+%Y-%m-%d %H:%M JST')"
-          git fetch origin main
-          git rebase origin/main
-          git push origin main
-        fi
+    - name: Commit and push changes
+      uses: stefanzweifel/git-auto-commit-action@v5
+      with:
+        commit_message: "🤖 Add data: $(date '+%Y-%m-%d %H:%M JST')"
+        file_pattern: 'data/raw/*'
+        commit_user_name: 'GitHub Action'
+        commit_user_email: 'action@github.com'
