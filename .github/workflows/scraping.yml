@@ -25,39 +25,17 @@ jobs:
         
     - name: Install dependencies
       run: pip install -r requirements.txt
-      
-    - name: Pull latest changes
-      run: |
-        git config --global user.name 'GitHub Action'
-        git config --global user.email 'action@github.com'
-        git pull --rebase origin main || echo "Pull failed, continuing..."
         
     - name: Run barber scraping
+      env:
+        GOOGLE_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_JSON }}
+        BARBER_SPREADSHEET_ID: ${{ secrets.BARBER_SPREADSHEET_ID }}
+        WEATHER_SPREADSHEET_ID: ${{ secrets.WEATHER_SPREADSHEET_ID }}
       run: python src/scraping/barber_scraper.py
       
-    - name: Run weather scraping  
+    - name: Run weather scraping
+      env:
+        GOOGLE_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_JSON }}
+        BARBER_SPREADSHEET_ID: ${{ secrets.BARBER_SPREADSHEET_ID }}
+        WEATHER_SPREADSHEET_ID: ${{ secrets.WEATHER_SPREADSHEET_ID }}
       run: python src/scraping/weather_scraper.py
-      
-    - name: Commit and push changes
-      run: |
-        git add data/raw/*
-        if git diff --cached --quiet; then
-          echo "No changes to commit"
-        else
-          git commit -m "🤖 Add data: $(date '+%Y-%m-%d %H:%M JST')"
-          
-          # Retry push up to 3 times with pull --rebase
-          for i in {1..3}; do
-            if git push origin main; then
-              echo "Push successful on attempt $i"
-              break
-            else
-              echo "Push failed on attempt $i, trying pull --rebase..."
-              git pull --rebase origin main
-              if [ $i -eq 3 ]; then
-                echo "Failed to push after 3 attempts"
-                exit 1
-              fi
-            fi
-          done
-        fi

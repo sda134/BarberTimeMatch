@@ -12,6 +12,10 @@ import sys
 import re
 from pathlib import Path
 
+# Google Sheets連携用のimport
+sys.path.append(str(Path(__file__).parent.parent))
+from utils.google_sheets import GoogleSheetsManager
+
 def load_config():
     """設定ファイルを読み込み"""
     config_path = Path(__file__).parent.parent.parent / 'config'
@@ -116,7 +120,22 @@ def create_error_record(store_config, timestamp, error_msg):
     }
 
 def save_data(data_list):
-    """データをCSVファイルに保存"""
+    """データをGoogle Sheetsに保存"""
+    if not data_list:
+        print("No data to save")
+        return
+    
+    try:
+        sheets_manager = GoogleSheetsManager()
+        sheets_manager.append_barber_data(data_list)
+        print(f"Successfully saved {len(data_list)} records to Google Sheets")
+    except Exception as e:
+        print(f"Error saving to Google Sheets: {e}")
+        # フォールバック：CSV保存
+        save_data_csv(data_list)
+
+def save_data_csv(data_list):
+    """データをCSVファイルに保存（フォールバック用）"""
     if not data_list:
         print("No data to save")
         return
@@ -125,7 +144,7 @@ def save_data(data_list):
     data_dir = Path(__file__).parent.parent.parent / 'data' / 'raw'
     data_dir.mkdir(parents=True, exist_ok=True)
     
-    csv_path = data_dir / 'barber_data.csv'
+    csv_path = data_dir / 'barber_data_backup.csv'
     
     # CSVヘッダー
     header = [
@@ -149,7 +168,7 @@ def save_data(data_list):
                 row.append(str(value))
             f.write(','.join(row) + '\n')
     
-    print(f"Saved {len(data_list)} records to {csv_path}")
+    print(f"Fallback: Saved {len(data_list)} records to {csv_path}")
 
 def main():
     """メイン処理"""

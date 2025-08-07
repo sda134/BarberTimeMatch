@@ -201,6 +201,11 @@ config/secrets.yaml
 config/credentials.yaml
 .secrets
 
+# Google Service Account Keys
+*.json
+!package*.json
+barbertimematch-*.json
+
 # Backup files
 *.bak
 *.backup
