@@ -5,3 +5,4 @@ timestamp,date,time,store_id,store_name,wait_count,area,day_of_week,hour,weekday
 2025-08-07 02:41:22,2025-08-07,02:41,nagoya_demo_store,アルペンモール守山志段味店,0,愛知県,Thursday,2,3,False,success
 2025-08-07 03:23:51,2025-08-07,03:23,nagoya_demo_store,アルペンモール守山志段味店,0,愛知県,Thursday,3,3,False,success
 2025-08-07 04:17:09,2025-08-07,04:17,nagoya_demo_store,アルペンモール守山志段味店,0,愛知県,Thursday,4,3,False,success
+2025-08-07 06:02:21,2025-08-07,06:02,nagoya_demo_store,アルペンモール守山志段味店,0,愛知県,Thursday,6,3,False,success
