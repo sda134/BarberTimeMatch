@@ -13,8 +13,10 @@ import re
 from pathlib import Path
 
 # Google Sheets連携用のimport
-sys.path.append(str(Path(__file__).parent.parent))
-from utils.google_sheets import GoogleSheetsManager
+# プロジェクトルートをパスに追加
+project_root = Path(__file__).parent.parent.parent
+sys.path.insert(0, str(project_root))
+from src.utils.google_sheets import GoogleSheetsManager
 
 def load_config():
     """設定ファイルを読み込み"""
