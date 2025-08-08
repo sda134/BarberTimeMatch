@@ -32,12 +32,21 @@ class GoogleSheetsManager:
         if service_account_json:
             try:
                 service_account_info = json.loads(service_account_json)
+                # private_keyの改行文字を正規化
+                if 'private_key' in service_account_info:
+                    private_key = service_account_info['private_key']
+                    # 改行文字がエスケープされている場合は置換
+                    if '\\n' in private_key:
+                        service_account_info['private_key'] = private_key.replace('\\n', '\n')
+                
                 return Credentials.from_service_account_info(
                     service_account_info,
                     scopes=['https://www.googleapis.com/auth/spreadsheets']
                 )
-            except json.JSONDecodeError:
-                raise ValueError("Invalid JSON in GOOGLE_SERVICE_ACCOUNT_JSON")
+            except json.JSONDecodeError as e:
+                raise ValueError(f"Invalid JSON in GOOGLE_SERVICE_ACCOUNT_JSON: {e}")
+            except Exception as e:
+                raise ValueError(f"Error processing service account credentials: {e}")
         
         # ローカル開発用：JSONファイルから読み込み
         credentials_file = os.getenv('GOOGLE_CREDENTIALS_FILE')
@@ -59,7 +68,7 @@ class GoogleSheetsManager:
             self.barber_spreadsheet_id, 
             'barber_data',
             df,
-            ['timestamp', 'store_id', 'store_name', 'wait_count', 'area', 'day_of_week', 'hour', 'is_holiday']
+            ['timestamp', 'date', 'time', 'store_id', 'store_name', 'wait_count', 'area', 'day_of_week', 'hour', 'weekday_num', 'is_weekend', 'scraping_status']
         )
     
     def append_weather_data(self, data: List[Dict[str, Any]]) -> None:
