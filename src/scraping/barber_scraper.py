@@ -7,7 +7,6 @@ from selenium.common.exceptions import TimeoutException, NoSuchElementException
 from datetime import datetime
 import yaml
 import time
-import os
 import sys
 import re
 from pathlib import Path
@@ -17,18 +16,8 @@ from pathlib import Path
 project_root = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(project_root))
 from src.utils.google_sheets import GoogleSheetsManager
+from src.scraping.utils import load_config, load_stores_config
 
-def load_config():
-    """設定ファイルを読み込み"""
-    config_path = Path(__file__).parent.parent.parent / 'config'
-    
-    with open(config_path / 'stores.yaml', 'r', encoding='utf-8') as f:
-        stores_config = yaml.safe_load(f)
-    
-    with open(config_path / 'scraping_config.yaml', 'r', encoding='utf-8') as f:
-        scraping_config = yaml.safe_load(f)
-    
-    return stores_config, scraping_config
 
 def create_driver(scraping_config):
     """Selenium WebDriverを作成"""
@@ -144,7 +133,7 @@ def save_data_csv(data_list):
     data_dir = Path(__file__).parent.parent.parent / 'data' / 'raw'
     data_dir.mkdir(parents=True, exist_ok=True)
     
-    csv_path = data_dir / 'barber_data_backup.csv'
+    csv_path = data_dir / 'barber_data.csv'
     
     # CSVヘッダー
     header = [
@@ -168,12 +157,13 @@ def save_data_csv(data_list):
                 row.append(str(value))
             f.write(','.join(row) + '\n')
     
-    print(f"Fallback: Saved {len(data_list)} records to {csv_path}")
+    print(f"Saved {len(data_list)} records to {csv_path}")
 
 def main():
     """メイン処理"""
     try:
-        stores_config, scraping_config = load_config()
+        stores_config = load_stores_config()
+        scraping_config = load_config()
         all_data = []
         
         # 床屋タイプの店舗のみ対象

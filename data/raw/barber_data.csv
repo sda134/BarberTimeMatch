@@ -7,3 +7,4 @@ timestamp,date,time,store_id,store_name,wait_count,area,day_of_week,hour,weekday
 2025-08-07 04:17:09,2025-08-07,04:17,nagoya_demo_store,アルペンモール守山志段味店,0,愛知県,Thursday,4,3,False,success
 2025-08-07 06:02:21,2025-08-07,06:02,nagoya_demo_store,アルペンモール守山志段味店,0,愛知県,Thursday,6,3,False,success
 2025-08-07 08:01:58,2025-08-07,08:01,nagoya_demo_store,アルペンモール守山志段味店,0,愛知県,Thursday,8,3,False,success
+2025-08-09 14:13:44,2025-08-09,14:13,nagoya_moriyama_shidami,アルペンモール守山志段味店,2,愛知県,Saturday,14,5,True,success

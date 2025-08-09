@@ -10,18 +10,7 @@ from pathlib import Path
 project_root = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(project_root))
 from src.utils.google_sheets import GoogleSheetsManager
-
-def load_config():
-    """設定ファイルを読み込み"""
-    config_path = Path(__file__).parent.parent.parent / 'config'
-    
-    with open(config_path / 'stores.yaml', 'r', encoding='utf-8') as f:
-        stores_config = yaml.safe_load(f)
-    
-    with open(config_path / 'scraping_config.yaml', 'r', encoding='utf-8') as f:
-        scraping_config = yaml.safe_load(f)
-    
-    return stores_config, scraping_config
+from src.scraping.utils import load_config, load_stores_config
 
 def simplify_weather(weather_text):
     """複雑な天気予報文を簡単な表現に変換"""
@@ -269,7 +258,7 @@ def save_data_csv(data_list):
     data_dir = Path(__file__).parent.parent.parent / 'data' / 'raw'
     data_dir.mkdir(parents=True, exist_ok=True)
     
-    csv_path = data_dir / 'weather_data_backup.csv'
+    csv_path = data_dir / 'weather_data.csv'
     
     # CSVヘッダー
     header = [
@@ -295,12 +284,13 @@ def save_data_csv(data_list):
                 row.append(str(value))
             f.write(','.join(row) + '\n')
     
-    print(f"Fallback: Saved {len(data_list)} weather records to {csv_path}")
+    print(f"Saved {len(data_list)} weather records to {csv_path}")
 
 def main():
     """メイン処理"""
     try:
-        stores_config, scraping_config = load_config()
+        stores_config = load_stores_config()
+        scraping_config = load_config()
         
         # 対象エリアコードを取得
         area_codes = get_unique_area_codes(stores_config)

@@ -35,3 +35,11 @@ python src/scraping/weather_scraper.py
 
 - データ収集: 毎日2時間毎
 - 分析: 毎日0時（データ蓄積後に実装予定）
+
+
+### 11. 自身をアーカイブ
+
+```bash
+zip -r ../barbartimematch_1.zip . -x "*venv*" -x ".git*"
+zip -r ../ver250804.zip . -x ".venv/*" ".venv/**/*"
+```
