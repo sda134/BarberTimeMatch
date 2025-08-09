@@ -84,16 +84,18 @@ def get_forecast_data(area_code, timeout=15):
         if len(data[0]['timeSeries']) > 2 and 'areas' in data[0]['timeSeries'][2]:
             temp_areas = data[0]['timeSeries'][2]['areas'][0]
             if 'temps' in temp_areas and temp_areas['temps']:
-                temps = temp_areas['temps'][0] if temp_areas['temps'] else None
-                if temps and temps != '':
-                    # 気温データは "最低気温/最高気温" 形式の場合がある
-                    if '/' in str(temps):
-                        temp_parts = str(temps).split('/')
-                        today_temp_min = temp_parts[0] if temp_parts[0] != '' else None
-                        today_temp_max = temp_parts[1] if len(temp_parts) > 1 and temp_parts[1] != '' else None
-                    else:
-                        # 単一の気温値の場合は最高気温として扱う
-                        today_temp_max = temps
+                temps_list = temp_areas['temps']
+                if temps_list and len(temps_list) >= 2:
+                    # temps配列は [今日午前, 今日午後, 明日午前, 明日午後] の順
+                    # 今日の最高気温は午後の値（インデックス1）
+                    # 今日の最低気温は午前の値（インデックス0）だが、実際は明日の最低気温がインデックス2にある場合が多い
+                    try:
+                        today_temp_max = int(temps_list[1]) if temps_list[1] and temps_list[1] != '' else None
+                        # 最低気温は通常、翌日の早朝値として提供される
+                        today_temp_min = int(temps_list[2]) if len(temps_list) > 2 and temps_list[2] and temps_list[2] != '' else None
+                    except (ValueError, IndexError):
+                        today_temp_max = None
+                        today_temp_min = None
         
         return {
             'area_code': area_code,
