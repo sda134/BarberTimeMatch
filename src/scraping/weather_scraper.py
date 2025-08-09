@@ -10,7 +10,7 @@ from pathlib import Path
 project_root = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(project_root))
 from src.utils.google_sheets import GoogleSheetsManager
-from src.scraping.utils import load_config, load_stores_config
+from src.scraping.utils import load_config, load_stores_config, WEATHER_DATA_HEADERS
 
 def simplify_weather(weather_text):
     """複雑な天気予報文を簡単な表現に変換"""
@@ -260,13 +260,8 @@ def save_data_csv(data_list):
     
     csv_path = data_dir / 'weather_data.csv'
     
-    # CSVヘッダー
-    header = [
-        'timestamp', 'date', 'time', 'hour', 'area_code', 'area_name',
-        'weather_forecast', 'temp_min_forecast', 'temp_max_forecast',
-        'current_temp', 'humidity', 'precipitation_1h', 'wind_speed',
-        'pressure', 'observation_station', 'data_status'
-    ]
+    # CSVヘッダー（統一定義を使用）
+    header = WEATHER_DATA_HEADERS
     
     # ファイルが存在しない場合はヘッダーを書き込み
     file_exists = csv_path.exists()

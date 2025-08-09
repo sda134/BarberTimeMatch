@@ -16,7 +16,7 @@ from pathlib import Path
 project_root = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(project_root))
 from src.utils.google_sheets import GoogleSheetsManager
-from src.scraping.utils import load_config, load_stores_config
+from src.scraping.utils import load_config, load_stores_config, BARBER_DATA_HEADERS
 
 
 def create_driver(scraping_config):
@@ -135,11 +135,8 @@ def save_data_csv(data_list):
     
     csv_path = data_dir / 'barber_data.csv'
     
-    # CSVヘッダー
-    header = [
-        'timestamp', 'date', 'time', 'store_id', 'store_name', 'wait_count',
-        'area', 'day_of_week', 'hour', 'weekday_num', 'is_weekend', 'scraping_status'
-    ]
+    # CSVヘッダー（統一定義を使用）
+    header = BARBER_DATA_HEADERS
     
     # ファイルが存在しない場合はヘッダーを書き込み
     file_exists = csv_path.exists()

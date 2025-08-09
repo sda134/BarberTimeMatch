@@ -25,6 +25,19 @@ def ensure_data_directory(data_path: str) -> None:
     """データディレクトリが存在しない場合は作成"""
     Path(data_path).parent.mkdir(parents=True, exist_ok=True)
 
+# データヘッダーの統一定義
+BARBER_DATA_HEADERS = [
+    'timestamp', 'date', 'time', 'store_id', 'store_name', 'wait_count',
+    'area', 'day_of_week', 'hour', 'weekday_num', 'is_weekend', 'scraping_status'
+]
+
+WEATHER_DATA_HEADERS = [
+    'timestamp', 'date', 'time', 'hour', 'area_code', 'area_name',
+    'weather_forecast', 'temp_min_forecast', 'temp_max_forecast',
+    'current_temp', 'humidity', 'precipitation_1h', 'wind_speed',
+    'pressure', 'observation_station', 'data_status'
+]
+
 def generate_mock_wait_count() -> int:
     """モックデータとして待ち人数を生成"""
     # 現在時刻に基づいて疑似的な待ち時間を生成

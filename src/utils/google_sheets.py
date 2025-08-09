@@ -20,6 +20,9 @@ except ImportError:
     from google.oauth2.service_account import Credentials
     GSPREAD_AVAILABLE = False
 
+# 統一ヘッダー定義をインポート
+from src.scraping.utils import BARBER_DATA_HEADERS, WEATHER_DATA_HEADERS
+
 load_dotenv()
 
 class GoogleSheetsManager:
@@ -97,7 +100,7 @@ class GoogleSheetsManager:
                 self.barber_spreadsheet_id, 
                 'barber_data',
                 df,
-                ['timestamp', 'date', 'time', 'store_id', 'store_name', 'wait_count', 'area', 'day_of_week', 'hour', 'weekday_num', 'is_weekend', 'scraping_status']
+                BARBER_DATA_HEADERS
             )
     
     def _append_barber_data_gspread(self, data: List[Dict[str, Any]]) -> None:
@@ -107,7 +110,7 @@ class GoogleSheetsManager:
             worksheet = sheet.worksheet('barber_data')
             
             # データをリスト形式に変換
-            headers = ['timestamp', 'date', 'time', 'store_id', 'store_name', 'wait_count', 'area', 'day_of_week', 'hour', 'weekday_num', 'is_weekend', 'scraping_status']
+            headers = BARBER_DATA_HEADERS
             rows = []
             for item in data:
                 row = []
@@ -127,7 +130,7 @@ class GoogleSheetsManager:
             # 既存のワークシートがない場合は作成を試みる
             try:
                 sheet = self.gc.open_by_key(self.barber_spreadsheet_id)
-                headers = ['timestamp', 'date', 'time', 'store_id', 'store_name', 'wait_count', 'area', 'day_of_week', 'hour', 'weekday_num', 'is_weekend', 'scraping_status']
+                headers = BARBER_DATA_HEADERS
                 worksheet = sheet.add_worksheet(title='barber_data', rows=1000, cols=len(headers))
                 worksheet.append_row(headers)
                 worksheet.append_rows(rows)
@@ -148,7 +151,7 @@ class GoogleSheetsManager:
                 self.weather_spreadsheet_id,
                 'weather_data', 
                 df,
-                ['timestamp', 'date', 'time', 'hour', 'area_code', 'area_name', 'weather_forecast', 'temp_min_forecast', 'temp_max_forecast', 'current_temp', 'humidity', 'precipitation_1h', 'wind_speed', 'pressure', 'observation_station', 'data_status']
+                WEATHER_DATA_HEADERS
             )
     
     def _append_weather_data_gspread(self, data: List[Dict[str, Any]]) -> None:
@@ -158,7 +161,7 @@ class GoogleSheetsManager:
             worksheet = sheet.worksheet('weather_data')
             
             # データをリスト形式に変換
-            headers = ['timestamp', 'date', 'time', 'hour', 'area_code', 'area_name', 'weather_forecast', 'temp_min_forecast', 'temp_max_forecast', 'current_temp', 'humidity', 'precipitation_1h', 'wind_speed', 'pressure', 'observation_station', 'data_status']
+            headers = WEATHER_DATA_HEADERS
             rows = []
             for item in data:
                 row = []
@@ -178,7 +181,7 @@ class GoogleSheetsManager:
             # 既存のワークシートがない場合は作成を試みる
             try:
                 sheet = self.gc.open_by_key(self.weather_spreadsheet_id)
-                headers = ['timestamp', 'date', 'time', 'hour', 'area_code', 'area_name', 'weather_forecast', 'temp_min_forecast', 'temp_max_forecast', 'current_temp', 'humidity', 'precipitation_1h', 'wind_speed', 'pressure', 'observation_station', 'data_status']
+                headers = WEATHER_DATA_HEADERS
                 worksheet = sheet.add_worksheet(title='weather_data', rows=1000, cols=len(headers))
                 worksheet.append_row(headers)
                 worksheet.append_rows(rows)
