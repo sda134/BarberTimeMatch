@@ -2,7 +2,7 @@ stores:
   - id: "nagoya_demo_store"
     name: "アルペンモール守山志段味店"  
     url: "https://option.junbanmachi.jp/embed/?id=2516&apiKey=Pr936rqlEoMgw0PHh2yN2t35GuzxeYyBAk24TAYlvekmYCseHCxQ3cD8beaB"
-    xpath_wait_count: '//span[@class="waiting-view__number"]/text()'
+    xpath_wait_count: '//span[@class="waiting-view__number"]'
     area: "愛知県"
     weather_area_code: "230000"  # 愛知県の気象庁エリアコード
     type: "barber"

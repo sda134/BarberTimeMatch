@@ -53,37 +53,31 @@ def scrape_store_data(store_config, scraping_config):
         driver = create_driver(scraping_config)
         driver.get(store_config['url'])
         
-        # JavaScriptの実行を待つ（最大10秒）
-        wait = WebDriverWait(driver, 10)
+        # ページが完全に読み込まれるまで待機
+        time.sleep(3)
+        
+        # 待機設定
+        wait = WebDriverWait(driver, 15)
         
         try:
-            # 待ち時間数字の要素を取得（クラス名で直接指定）
-            element = wait.until(EC.presence_of_element_located((By.CLASS_NAME, "waiting-view__number")))
-            wait_text = element.text.strip()
-            
-            print(f"DEBUG: Found element with text: '{wait_text}' (length: {len(wait_text)})")
-            print(f"DEBUG: Text repr: {repr(wait_text)}")
+            # 待ち時間数字の要素を取得（XPathで指定）
+            element = wait.until(EC.presence_of_element_located((By.XPATH, store_config['xpath_wait_count'])))
+            # WebElementからテキストを正しく取得
+            wait_text = element.text.strip() if element.text else element.get_attribute('textContent').strip()
             
             if wait_text:
                 if wait_text == '-':
-                    # 営業時間外または閉店時は0とする
                     wait_count = 0
-                    print(f"Found wait count text: '{wait_text}' (closed/after-hours) -> {wait_count}")
                 else:
                     # 数字のみを抽出（例: "3組" → "3"）
                     numbers = re.findall(r'\d+', wait_text)
-                    print(f"DEBUG: Extracted numbers: {numbers}")
                     wait_count = int(numbers[0]) if numbers else None
-                    print(f"Found wait count text: '{wait_text}' -> {wait_count}")
             else:
                 wait_count = None
-                print("Wait text is empty")
                 
         except TimeoutException:
-            print("Timeout waiting for waiting-view__number element")
             wait_count = None
         except NoSuchElementException:
-            print("waiting-view__number element not found")
             wait_count = None
             
         return {
