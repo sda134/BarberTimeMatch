@@ -1,12 +1,26 @@
 stores:
-  - id: "nagoya_moriyama_shidami"
-    name: "アルペンモール守山志段味店"  
-    url: "https://option.junbanmachi.jp/embed/?id=2516&apiKey=Pr936rqlEoMgw0PHh2yN2t35GuzxeYyBAk24TAYlvekmYCseHCxQ3cD8beaB"
-    xpath_wait_count: '//span[@class="waiting-view__number"]'
+  - id: "nagoya_owariasahi_sango"
+    name: "アルペンモール守山志段味店"
+    url: "https://www.plage-bb.co.jp/barber/store/10801"
+    xpath_wait_count: '//div[@class="wait"]/iframe'
+    xpath_iframe_content: '//span[@class="waiting-view__number"]'
+    is_iframe: true
     area: "愛知県"
     weather_area_code: "230000"  # 愛知県の気象庁エリアコード
     type: "barber"
     notes: "名古屋の実際の床屋店舗例"
+  - id: "nagoya_seto"
+    name: "瀬戸店"
+    url: "https://www.plage-bb.co.jp/barber/store/10511"
+    xpath_wait_count: '//div[@class="wait"]/iframe'
+    xpath_iframe_content: '//span[@class="waiting-view__number"]'
+    is_iframe: true
+    area: "愛知県"
+    weather_area_code: "230000"  # 愛知県の気象庁エリアコード
+    type: "barber"
+    notes: "名古屋の実際の床屋店舗例"
+
+
 
 # 主要エリアコード参考:
 # 130000: 東京都

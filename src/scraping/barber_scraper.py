@@ -43,16 +43,31 @@ def scrape_store_data(store_config, scraping_config):
         driver.get(store_config['url'])
         
         # ページが完全に読み込まれるまで待機
-        time.sleep(3)
+        time.sleep(1)
         
         # 待機設定
-        wait = WebDriverWait(driver, 15)
+        wait = WebDriverWait(driver, scraping_config['scraping']['timeout'])
         
         try:
-            # 待ち時間数字の要素を取得（XPathで指定）
-            element = wait.until(EC.presence_of_element_located((By.XPATH, store_config['xpath_wait_count'])))
-            # WebElementからテキストを正しく取得
-            wait_text = element.text.strip() if element.text else element.get_attribute('textContent').strip()
+            print(f"Looking for XPath: {store_config['xpath_wait_count']}")
+            
+            if store_config.get('is_iframe', False):
+                # iframeに切り替えて待ち人数を取得
+                iframe = driver.find_element(By.XPATH, store_config['xpath_wait_count'])
+                driver.switch_to.frame(iframe)
+                
+                # iframe内で待ち人数要素を探す
+                wait_element = driver.find_element(By.XPATH, store_config['xpath_iframe_content'])
+                wait_text = wait_element.text.strip()
+                print(f'wait_text: "{wait_text}"')
+                
+                # メインフレームに戻る
+                driver.switch_to.default_content()
+            else:
+                # 通常のXPath処理
+                wait_element = driver.find_element(By.XPATH, store_config['xpath_wait_count'])
+                wait_text = wait_element.text.strip()
+                print(f'wait_text: "{wait_text}"')
             
             if wait_text:
                 if wait_text == '-':
@@ -64,9 +79,14 @@ def scrape_store_data(store_config, scraping_config):
             else:
                 wait_count = None
                 
-        except TimeoutException:
-            wait_count = None
-        except NoSuchElementException:
+        except Exception as e:
+            print(f"Error during element access: {e}")
+            # iframe使用時はメインフレームに戻る（エラー時も念のため）
+            if store_config.get('is_iframe', False):
+                try:
+                    driver.switch_to.default_content()
+                except:
+                    pass
             wait_count = None
             
         return {
