@@ -75,13 +75,10 @@ def get_forecast_data(area_code, timeout=15):
             if 'temps' in temp_areas and temp_areas['temps']:
                 temps_list = temp_areas['temps']
                 if temps_list and len(temps_list) >= 2:
-                    # temps配列は [今日午前, 今日午後, 明日午前, 明日午後] の順
-                    # 今日の最高気温は午後の値（インデックス1）
-                    # 今日の最低気温は午前の値（インデックス0）だが、実際は明日の最低気温がインデックス2にある場合が多い
+                    # temps配列は [最低気温, 最高気温] の順（明日の予想気温）
                     try:
+                        today_temp_min = int(temps_list[0]) if temps_list[0] and temps_list[0] != '' else None
                         today_temp_max = int(temps_list[1]) if temps_list[1] and temps_list[1] != '' else None
-                        # 最低気温は通常、翌日の早朝値として提供される
-                        today_temp_min = int(temps_list[2]) if len(temps_list) > 2 and temps_list[2] and temps_list[2] != '' else None
                     except (ValueError, IndexError):
                         today_temp_max = None
                         today_temp_min = None
