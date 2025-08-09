@@ -6,17 +6,25 @@ Google Sheets API連携ユーティリティ
 import os
 import json
 from typing import List, Dict, Any, Optional
-from googleapiclient.discovery import build
-from google.oauth2.service_account import Credentials
 from dotenv import load_dotenv
 import pandas as pd
+
+# gspreadを試す（requirements.txtに含まれている）
+try:
+    import gspread
+    from google.oauth2.service_account import Credentials
+    GSPREAD_AVAILABLE = True
+except ImportError:
+    # フォールバック
+    from googleapiclient.discovery import build
+    from google.oauth2.service_account import Credentials
+    GSPREAD_AVAILABLE = False
 
 load_dotenv()
 
 class GoogleSheetsManager:
     def __init__(self):
         self.credentials = self._get_credentials()
-        self.service = build('sheets', 'v4', credentials=self.credentials)
         
         # SpreadsheetのID
         self.barber_spreadsheet_id = os.getenv('BARBER_SPREADSHEET_ID')
@@ -24,6 +32,14 @@ class GoogleSheetsManager:
         
         if not self.barber_spreadsheet_id or not self.weather_spreadsheet_id:
             raise ValueError("Spreadsheet IDs must be set in environment variables")
+        
+        # gspreadを優先使用
+        if GSPREAD_AVAILABLE:
+            self.gc = gspread.authorize(self.credentials)
+            self.use_gspread = True
+        else:
+            self.service = build('sheets', 'v4', credentials=self.credentials)
+            self.use_gspread = False
     
     def _get_credentials(self) -> Credentials:
         """Google Sheets API認証情報を取得"""
@@ -38,6 +54,16 @@ class GoogleSheetsManager:
                     # 改行文字がエスケープされている場合は置換
                     if '\\n' in private_key:
                         service_account_info['private_key'] = private_key.replace('\\n', '\n')
+                    
+                    # private_keyの形式をチェック
+                    if not service_account_info['private_key'].startswith('-----BEGIN PRIVATE KEY-----'):
+                        raise ValueError("private_key does not start with proper PEM header")
+                
+                # デバッグ：キーの存在確認
+                required_keys = ['type', 'project_id', 'private_key_id', 'private_key', 'client_email', 'client_id', 'auth_uri', 'token_uri']
+                missing_keys = [key for key in required_keys if key not in service_account_info]
+                if missing_keys:
+                    raise ValueError(f"Missing required keys in service account JSON: {missing_keys}")
                 
                 return Credentials.from_service_account_info(
                     service_account_info,
@@ -63,13 +89,51 @@ class GoogleSheetsManager:
         if not data:
             return
         
-        df = pd.DataFrame(data)
-        self._append_data_to_sheet(
-            self.barber_spreadsheet_id, 
-            'barber_data',
-            df,
-            ['timestamp', 'date', 'time', 'store_id', 'store_name', 'wait_count', 'area', 'day_of_week', 'hour', 'weekday_num', 'is_weekend', 'scraping_status']
-        )
+        if self.use_gspread:
+            self._append_barber_data_gspread(data)
+        else:
+            df = pd.DataFrame(data)
+            self._append_data_to_sheet(
+                self.barber_spreadsheet_id, 
+                'barber_data',
+                df,
+                ['timestamp', 'date', 'time', 'store_id', 'store_name', 'wait_count', 'area', 'day_of_week', 'hour', 'weekday_num', 'is_weekend', 'scraping_status']
+            )
+    
+    def _append_barber_data_gspread(self, data: List[Dict[str, Any]]) -> None:
+        """gspreadを使用して床屋データを追記"""
+        try:
+            sheet = self.gc.open_by_key(self.barber_spreadsheet_id)
+            worksheet = sheet.worksheet('barber_data')
+            
+            # データをリスト形式に変換
+            headers = ['timestamp', 'date', 'time', 'store_id', 'store_name', 'wait_count', 'area', 'day_of_week', 'hour', 'weekday_num', 'is_weekend', 'scraping_status']
+            rows = []
+            for item in data:
+                row = []
+                for header in headers:
+                    value = item.get(header, '')
+                    if value is None:
+                        value = ''
+                    row.append(str(value))
+                rows.append(row)
+            
+            # データを追記
+            worksheet.append_rows(rows)
+            print(f"Successfully appended {len(rows)} rows using gspread")
+            
+        except Exception as e:
+            print(f"gspread append failed: {e}")
+            # 既存のワークシートがない場合は作成を試みる
+            try:
+                sheet = self.gc.open_by_key(self.barber_spreadsheet_id)
+                headers = ['timestamp', 'date', 'time', 'store_id', 'store_name', 'wait_count', 'area', 'day_of_week', 'hour', 'weekday_num', 'is_weekend', 'scraping_status']
+                worksheet = sheet.add_worksheet(title='barber_data', rows=1000, cols=len(headers))
+                worksheet.append_row(headers)
+                worksheet.append_rows(rows)
+                print(f"Created new worksheet and appended {len(rows)} rows")
+            except Exception as e2:
+                raise Exception(f"Failed to create worksheet: {e2}")
     
     def append_weather_data(self, data: List[Dict[str, Any]]) -> None:
         """気象データをSpreadsheetに追記"""
