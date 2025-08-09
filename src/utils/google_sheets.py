@@ -140,17 +140,59 @@ class GoogleSheetsManager:
         if not data:
             return
         
-        df = pd.DataFrame(data)
-        self._append_data_to_sheet(
-            self.weather_spreadsheet_id,
-            'weather_data', 
-            df,
-            ['date', 'area_code', 'area_name', 'weather_forecast', 'temp_min_forecast', 'temp_max_forecast', 'timestamp']
-        )
+        if self.use_gspread:
+            self._append_weather_data_gspread(data)
+        else:
+            df = pd.DataFrame(data)
+            self._append_data_to_sheet(
+                self.weather_spreadsheet_id,
+                'weather_data', 
+                df,
+                ['timestamp', 'date', 'time', 'hour', 'area_code', 'area_name', 'weather_forecast', 'temp_min_forecast', 'temp_max_forecast', 'current_temp', 'humidity', 'precipitation_1h', 'wind_speed', 'pressure', 'observation_station', 'data_status']
+            )
+    
+    def _append_weather_data_gspread(self, data: List[Dict[str, Any]]) -> None:
+        """gspreadを使用して気象データを追記"""
+        try:
+            sheet = self.gc.open_by_key(self.weather_spreadsheet_id)
+            worksheet = sheet.worksheet('weather_data')
+            
+            # データをリスト形式に変換
+            headers = ['timestamp', 'date', 'time', 'hour', 'area_code', 'area_name', 'weather_forecast', 'temp_min_forecast', 'temp_max_forecast', 'current_temp', 'humidity', 'precipitation_1h', 'wind_speed', 'pressure', 'observation_station', 'data_status']
+            rows = []
+            for item in data:
+                row = []
+                for header in headers:
+                    value = item.get(header, '')
+                    if value is None:
+                        value = ''
+                    row.append(str(value))
+                rows.append(row)
+            
+            # データを追記
+            worksheet.append_rows(rows)
+            print(f"Successfully appended {len(rows)} weather rows using gspread")
+            
+        except Exception as e:
+            print(f"gspread weather append failed: {e}")
+            # 既存のワークシートがない場合は作成を試みる
+            try:
+                sheet = self.gc.open_by_key(self.weather_spreadsheet_id)
+                headers = ['timestamp', 'date', 'time', 'hour', 'area_code', 'area_name', 'weather_forecast', 'temp_min_forecast', 'temp_max_forecast', 'current_temp', 'humidity', 'precipitation_1h', 'wind_speed', 'pressure', 'observation_station', 'data_status']
+                worksheet = sheet.add_worksheet(title='weather_data', rows=1000, cols=len(headers))
+                worksheet.append_row(headers)
+                worksheet.append_rows(rows)
+                print(f"Created new weather worksheet and appended {len(rows)} rows")
+            except Exception as e2:
+                raise Exception(f"Failed to create weather worksheet: {e2}")
     
     def _append_data_to_sheet(self, spreadsheet_id: str, sheet_name: str, 
                             df: pd.DataFrame, expected_columns: List[str]) -> None:
         """データをシートに追記（ヘッダーがない場合は作成）"""
+        # gspread使用時はこのメソッドは使わない
+        if self.use_gspread:
+            raise ValueError("This method should not be called when using gspread")
+            
         try:
             # シートの存在確認・作成
             self._ensure_sheet_exists(spreadsheet_id, sheet_name, expected_columns)
@@ -184,6 +226,10 @@ class GoogleSheetsManager:
     def _ensure_sheet_exists(self, spreadsheet_id: str, sheet_name: str, 
                            header_columns: List[str]) -> None:
         """シートの存在確認、なければ作成してヘッダー設定"""
+        # gspread使用時はこのメソッドは使わない
+        if self.use_gspread:
+            raise ValueError("This method should not be called when using gspread")
+            
         try:
             # 既存シート一覧を取得
             spreadsheet = self.service.spreadsheets().get(
