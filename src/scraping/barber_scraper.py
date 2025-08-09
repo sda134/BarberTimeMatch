@@ -61,6 +61,9 @@ def scrape_store_data(store_config, scraping_config):
             element = wait.until(EC.presence_of_element_located((By.CLASS_NAME, "waiting-view__number")))
             wait_text = element.text.strip()
             
+            print(f"DEBUG: Found element with text: '{wait_text}' (length: {len(wait_text)})")
+            print(f"DEBUG: Text repr: {repr(wait_text)}")
+            
             if wait_text:
                 if wait_text == '-':
                     # 営業時間外または閉店時は0とする
@@ -69,6 +72,7 @@ def scrape_store_data(store_config, scraping_config):
                 else:
                     # 数字のみを抽出（例: "3組" → "3"）
                     numbers = re.findall(r'\d+', wait_text)
+                    print(f"DEBUG: Extracted numbers: {numbers}")
                     wait_count = int(numbers[0]) if numbers else None
                     print(f"Found wait count text: '{wait_text}' -> {wait_count}")
             else:
