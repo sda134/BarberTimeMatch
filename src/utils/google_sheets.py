@@ -81,7 +81,7 @@ class GoogleSheetsManager:
             self.weather_spreadsheet_id,
             'weather_data', 
             df,
-            ['date', 'area_code', 'area_name', 'weather', 'temp_min', 'temp_max', 'timestamp']
+            ['date', 'area_code', 'area_name', 'weather_forecast', 'temp_min_forecast', 'temp_max_forecast', 'timestamp']
         )
     
     def _append_data_to_sheet(self, spreadsheet_id: str, sheet_name: str, 
@@ -159,14 +159,17 @@ class GoogleSheetsManager:
         ).execute()
         
         # ヘッダー追加
-        self.service.spreadsheets().values().update(
-            spreadsheetId=spreadsheet_id,
-            range=f"{sheet_name}!1:1",
-            valueInputOption='RAW',
-            body={'values': [header_columns]}
-        ).execute()
-        
-        print(f"Created sheet '{sheet_name}' with headers")
+        try:
+            self.service.spreadsheets().values().update(
+                spreadsheetId=spreadsheet_id,
+                range=f"{sheet_name}!1:1",
+                valueInputOption='RAW',
+                body={'values': [header_columns]}
+            ).execute()
+            print(f"Created sheet '{sheet_name}' with headers")
+        except Exception as e:
+            print(f"Error adding headers to sheet '{sheet_name}': {e}")
+            raise
     
     def _check_and_add_headers(self, spreadsheet_id: str, sheet_name: str, 
                              header_columns: List[str]) -> None:
