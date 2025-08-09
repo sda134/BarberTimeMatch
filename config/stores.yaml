@@ -1,5 +1,5 @@
 stores:
-  - id: "nagoya_demo_store"
+  - id: "nagoya_moriyama_shidami"
     name: "アルペンモール守山志段味店"  
     url: "https://option.junbanmachi.jp/embed/?id=2516&apiKey=Pr936rqlEoMgw0PHh2yN2t35GuzxeYyBAk24TAYlvekmYCseHCxQ3cD8beaB"
     xpath_wait_count: '//span[@class="waiting-view__number"]'
